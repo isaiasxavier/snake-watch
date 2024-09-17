@@ -1,7 +1,7 @@
 # Snake Watch
 
 - Based on https://github.com/galacticcouncil/snakewatch
-- Track the transactions on Omnipool/Hydration via CLI.
+- Track the transactions on Hydration via CLI.
 
 ## Getting Started
 
@@ -25,4 +25,8 @@ node src/server.js
 
 ```sh
 node src/omnipoolTransactions.js
+```
+
+```sh
+node src/xykTransactions.js
 ```

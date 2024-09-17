@@ -110,5 +110,4 @@ export const formatUsdValue = value => {
     }).format(amount).replace(/,/g, " ")} ${symbol}*`;
 };
 
-// Adicione esta linha ao final do arquivo currencies.js
 export {loadCurrency};

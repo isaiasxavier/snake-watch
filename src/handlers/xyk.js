@@ -1,58 +1,47 @@
-import {broadcast} from "../discord.js";
-import {
-  formatAccount,
-  formatAmount, formatUsdValue,
-  isWhale,
-  recordPrice,
-  usdValue
-} from "../currencies.js";
-import {usdCurrencyId} from "../config.js";
+// src/handlers/xyk.js
+import {decimals, loadCurrency, symbol} from "../currencies.js";
 import {notInRouter} from "./router.js";
 
-export default function xykHandler(events) {
-  events
-    .onFilter('xyk', 'SellExecuted', notInRouter, sellHandler)
-    .onFilter('xyk', 'BuyExecuted', notInRouter, buyHandler)
-    .on('xyk', 'LiquidityAdded', liquidityAddedHandler)
-    .on('xyk', 'LiquidityRemoved', liquidityRemovedHandler)
+export default async function xykHandler(events) {
+    for (const record of events) {
+        const {event, phase} = record;
+        const siblings = events.filter(({phase: siblingPhase}) =>
+            (phase.isApplyExtrinsic && siblingPhase.isApplyExtrinsic && phase.asApplyExtrinsic.eq(siblingPhase.asApplyExtrinsic)) ||
+            (phase.isFinalization && siblingPhase.isFinalization)
+        );
+
+        if (event.section === 'xyk') {
+            if (event.method === 'SellExecuted' && notInRouter({event, siblings})) {
+                await sellHandler({event});
+            } else if (event.method === 'BuyExecuted' && notInRouter({event, siblings})) {
+                await buyHandler({event});
+            }
+        }
+    }
 }
 
 async function sellHandler({event}) {
-  const {who, assetIn, assetOut, amount: amountIn, salePrice: amountOut} = event.data;
-  return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
+    const {who, assetIn, assetOut, amount: amountIn, salePrice: amountOut} = event.data;
+    return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
 }
 
 async function buyHandler({event}) {
-  const {who, assetIn, assetOut, amount: amountOut, buyPrice: amountIn} = event.data;
-  return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
+    const {who, assetIn, assetOut, amount: amountOut, buyPrice: amountIn} = event.data;
+    return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
 }
 
 export async function swapHandler({who, assetIn, assetOut, amountIn, amountOut}, action = `swapped`) {
-  const sold = {currencyId: assetIn, amount: amountIn};
-  const bought = {currencyId: assetOut, amount: amountOut};
-  recordPrice(sold, bought);
-  const value = usdValue(bought);
-  let message = `${formatAccount(who, isWhale(value))} ${action} **${formatAmount(sold)}** for **${formatAmount(bought)}**`;
-  if (![assetIn, assetOut].map(id => id.toString()).includes(usdCurrencyId)) {
-    message += formatUsdValue(value);
-  }
-  broadcast(message);
-}
+    await loadCurrency(assetIn);
+    await loadCurrency(assetOut);
 
-async function liquidityAddedHandler({event}) {
-  const {who, assetA, assetB, amountA, amountB} = event.data;
-  const a = {amount: amountA, currencyId: assetA};
-  const b = {amount: amountB, currencyId: assetB};
-  const [va, vb] = [a, b].map(usdValue);
-  const value = va && vb ? va + vb : null;
-  const message = `💦 liquidity added as **${formatAmount(a)}** + **${formatAmount(b)}**${formatUsdValue(value)} by ${formatAccount(who, isWhale(value))}`;
-  broadcast(message);
-}
+    const soldDecimals = decimals(assetIn);
+    const boughtDecimals = decimals(assetOut);
 
-async function liquidityRemovedHandler({event, siblings}) {
-  const {who} = event.data;
-  const amounts = siblings.filter(({method, data: {to}}) =>
-    method === 'Transferred' && to.toString() === who.toString()).map(({data}) => data);
-  const message = `🚰 liquidity removed as **${formatAmount(amounts[0])}** + **${formatAmount(amounts[1])}** by ${formatAccount(who)}`;
-  broadcast(message);
+    const soldAmountReadable = (Number(amountIn) / 10 ** soldDecimals).toFixed(soldDecimals);
+    const boughtAmountReadable = (Number(amountOut) / 10 ** boughtDecimals).toFixed(boughtDecimals);
+
+    const truncatedAccountId = who.toString().slice(-5);
+
+    const message = `${truncatedAccountId} ${action} ${soldAmountReadable} ${symbol(assetIn)} for ${boughtAmountReadable} ${symbol(assetOut)}`;
+    console.log(message);
 }

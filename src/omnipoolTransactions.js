@@ -23,10 +23,7 @@ async function main() {
         // Subscrição para eventos
         apiInstance.query.system.events(async (events) => {
             for (const record of events) {
-                const {event, phase} = record;
-                const types = event.typeDef;
-
-                // Filtra eventos da Omnipool (especificamente "SellExecuted")
+                const {event, phase} = record; // Filtra eventos da Omnipool (especificamente "SellExecuted")
                 if (event.section === 'omnipool' && event.method === 'SellExecuted') {
                     const [accountId, assetSold, assetBought, amountSold, amountBought] = event.data;
 
