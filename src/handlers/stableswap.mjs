@@ -1,8 +1,8 @@
 import {swapHandler} from "./xyk.mjs";
-import {buyHandler, sellHandler} from "./omnipool.js";
-import {formatAccount, formatAmount, formatUsdValue, isWhale, usdValue} from "../currencies.js";
-import {broadcast} from "../discord.js";
-import {notInRouter} from "./router.js";
+import {buyHandler, sellHandler} from "./omnipool.mjs";
+import {formatAccount, formatAmount, formatUsdValue, isWhale, usdValue} from "../currencies.mjs";
+//import {broadcast} from "../discord.js";
+import {notInRouter} from "./router.mjs";
 
 export default function stableswapHandler(events) {
     events

@@ -1,9 +1,9 @@
 import {swapHandler} from "./xyk.mjs";
-import {formatAccount, formatAmount, formatUsdValue, isWhale, usdValue} from "../currencies.js";
-import {broadcast} from "../discord.js";
-import {usdCurrencyId} from "../config.js";
-import {notInRouter} from "./router.js";
-import {notByReferralPot} from "./referrals.js";
+import {formatAccount, formatAmount, formatUsdValue, isWhale, usdValue} from "../currencies.mjs";
+//import {broadcast} from "../discord.js";
+import {usdCurrencyId} from "../config.mjs";
+import {notInRouter} from "./router.mjs";
+import {notByReferralPot} from "./referrals.mjs";
 
 export default function omnipoolHandler(events) {
     events

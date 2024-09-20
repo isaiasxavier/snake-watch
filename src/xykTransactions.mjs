@@ -1,13 +1,10 @@
-// src/xykTransactions.js
-import {api, initApi} from './api.js';
-import {rpc} from './config.js';
+// xykTransactions.mjs
+import {api} from './api.mjs';
 import xykHandler from './handlers/xyk.mjs';
 
 export async function main() {
     try {
-        await initApi(rpc);
         const apiInstance = api();
-        console.log('Connected to the NODE:', rpc);
 
         if (!apiInstance.query || !apiInstance.query.system || !apiInstance.query.system.events) {
             console.error('API structure:', apiInstance.query);
@@ -26,5 +23,3 @@ export async function main() {
         console.error('Falha ao inicializar API:', error);
     }
 }
-
-main().catch(console.error);

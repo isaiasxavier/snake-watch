@@ -1,4 +1,4 @@
-import {api} from './api.js';
+import {api} from './api.mjs';
 
 export class Events {
     listeners = [];

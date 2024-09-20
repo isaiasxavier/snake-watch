@@ -1,6 +1,6 @@
 import {api, initApi} from './api.js';
 import {Events} from "./events.js";
-import xyk from "./handlers/xyk.js";
+import xyk from "./handlers/xyk.mjs";
 import lbp from "./handlers/lbp.js";
 import omnipool from "./handlers/omnipool.js";
 import stableswap from "./handlers/stableswap.js";
@@ -10,9 +10,10 @@ import otc from "./handlers/otc.js";
 import dca from "./handlers/dca.js";
 import staking from "./handlers/staking.js";
 import referrals from "./handlers/referrals.js";
-//import {initDiscord} from "./discord.js";
 import {rpc, sha} from "./config.js";
 import {currenciesHandler} from "./currencies.js";
+import {main as omnipoolTransactionsMain} from './omnipoolTransactions.js';
+import {main as xykTransactionsMain} from './xykTransactions.js';
 
 async function main() {
     console.log('🐍⌚');
@@ -21,7 +22,6 @@ async function main() {
     const {rpc: {system}} = api();
     const [chain, version] = await Promise.all([system.chain(), system.version()]);
     console.log(`connected to ${rpc} (${chain} ${version})`);
-    //await initDiscord(token, channel);
 
     const events = new Events();
     events.addHandler(currenciesHandler);
@@ -61,13 +61,13 @@ async function main() {
     console.log('watching for new blocks');
     events.startWatching();
     console.log('Trying to connect to RPC at:', rpc);
+
+    // Inicializa omnipoolTransactions e xykTransactions
+    await omnipoolTransactionsMain();
+    await xykTransactionsMain();
 }
 
 main().catch(err => {
     console.error(err);
     process.exit(1);
 });
-
-
-
-

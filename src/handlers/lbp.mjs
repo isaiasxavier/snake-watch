@@ -1,5 +1,5 @@
 import {swapHandler} from "./xyk.mjs";
-import {notInRouter} from "./router.js";
+import {notInRouter} from "./router.mjs";
 
 export default function lbpHandler(events) {
     events

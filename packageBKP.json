@@ -1,0 +1,38 @@
+{
+  "name": "snakewatch",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/bot.js",
+  "scripts": {
+    "test": "node --experimental-vm-modules ./node_modules/.bin/jest --detectOpenHandles",
+    "start": "node src/bot.js",
+    "start:rococo": "RPC_URL=wss://hydradx-rococo-rpc.play.hydration.cloud npm run start",
+    "start:mainnet": "USD_TOKEN=2 RPC_URL=wss://rpc.basilisk.cloud npm run start",
+    "start:test": "USD_TOKEN=2 NODE_ENV=test RPC_URL=wss://rpc.basilisk.cloud npm run start",
+    "start:test:omnipool": "USD_TOKEN=2 NODE_ENV=test WHALE_AMOUNT=100000000 RPC_URL=wss://rpc.hydradx.cloud npm run start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/galacticcouncil/snakewatch.git"
+  },
+  "author": "",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/galacticcouncil/snakewatch/issues"
+  },
+  "homepage": "https://github.com/galacticcouncil/snakewatch#readme",
+  "type": "module",
+  "jest": {
+    "transform": {}
+  },
+  "dependencies": {
+    "@polkadot/api": "^13.0.1",
+    "dijkstrajs": "^1.0.2",
+    "discord.js": "^14.0.3",
+    "dotenv": "^16.0.1",
+    "markdown-to-ansi": "^1.0.0"
+  },
+  "devDependencies": {
+    "jest": "^28.1.3"
+  }
+}

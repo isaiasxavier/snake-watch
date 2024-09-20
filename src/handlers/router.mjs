@@ -1,5 +1,5 @@
 import {swapHandler} from "./xyk.mjs";
-import {notInDca} from "./dca.js";
+import {notInDca} from "./dca.mjs";
 
 export default function routerHandler(events) {
     events

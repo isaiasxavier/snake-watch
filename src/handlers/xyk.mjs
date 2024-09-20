@@ -1,8 +1,13 @@
-// src/handlers/xyk.js
-import {decimals, loadCurrency, symbol} from "../currencies.js";
-import {notInRouter} from "./router.js";
+// src/handlers/xyk.mjs
+import {decimals, loadCurrency, symbol} from "../currencies.mjs";
+import {notInRouter} from "./router.mjs";
 
 export default async function xykHandler(events) {
+    if (!Array.isArray(events)) {
+        console.error("TypeError: events is not iterable");
+        return;
+    }
+
     for (const record of events) {
         const {event, phase} = record;
         const siblings = events.filter(({phase: siblingPhase}) =>

@@ -5,6 +5,6 @@ services:
     environment:
       DISCORD_CHANNEL: '999243620609687572'
       DISCORD_TOKEN: xxx
-      RPC_URL: wss://rpc-01.basilisk-rococo.hydradx.io
+      RPC_URL: wss://rpc.hydradx.cloud
     logging:
       driver: json-file
