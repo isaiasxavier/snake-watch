@@ -3,6 +3,7 @@ import {
     formatAccount,
     formatAmount,
     formatUsdValue,
+    getPrice,
     isWhale,
     loadCurrency,
     recordPrice,
@@ -29,29 +30,61 @@ async function buyHandler({event}) {
     return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
 }
 
+// Atualize a função swapHandler para verificar IDs de moeda indefinidos
 export async function swapHandler({who, assetIn, assetOut, amountIn, amountOut}, action = `swapped`) {
+    if (!assetIn || !assetOut) {
+        console.error('Invalid asset IDs:', {assetIn, assetOut});
+        return;
+    }
+
     const sold = {currencyId: assetIn, amount: amountIn};
     const bought = {currencyId: assetOut, amount: amountOut};
 
     const currencyIn = await loadCurrency(assetIn);
     const currencyOut = await loadCurrency(assetOut);
 
-    recordPrice(sold, bought);
-    const value = usdValue(bought);
-    let message = `${formatAccount(who, isWhale(value))} ${action} **${formatAmount(sold.amount, currencyIn)}** for **${formatAmount(bought.amount, currencyOut)}**`;
-    if (![assetIn, assetOut].map(id => id.toString()).includes(usdCurrencyId)) {
-        message += formatUsdValue(value);
+    if (!currencyIn || !currencyOut) {
+        console.error('Currency data not found for assets:', {assetIn, assetOut});
+        return;
     }
+
+    recordPrice(sold, bought);
+
+    let value = await usdValue(bought) || (getPrice(assetOut, usdCurrencyId) ? amountOut / getPrice(assetOut, usdCurrencyId) : null);
+    let soldValueInUsd = await usdValue(sold);
+
+    const formattedSoldAmount = formatAmount(sold.amount, currencyIn);
+    const formattedBoughtAmount = formatAmount(bought.amount, currencyOut);
+    const formattedUsdValue = formatUsdValue(value);
+    const formattedSoldValueInUsd = formatUsdValue(soldValueInUsd);
+
+    let message = `${formatAccount(who, isWhale(value))} ${action} **${formattedSoldAmount}** for **${formattedBoughtAmount}**`;
+    if (![assetIn, assetOut].map(id => id.toString()).includes(usdCurrencyId)) {
+        message += ` (~${formattedSoldValueInUsd})`;
+    }
+
     addBotOutput(message);
 }
 
-async function liquidityAddedHandler({event}) {
+export async function liquidityAddedHandler({event}) {
     const {who, assetA, assetB, amountA, amountB} = event.data;
-    const a = {amount: amountA, currencyId: assetA};
-    const b = {amount: amountB, currencyId: assetB};
-    const [va, vb] = [a, b].map(usdValue);
-    const value = va && vb ? va + vb : null;
-    const message = `💦 liquidity added as **${formatAmount(a)}** + **${formatAmount(b)}**${formatUsdValue(value)} by ${formatAccount(who, isWhale(value))}`;
+
+    const currencyA = await loadCurrency(assetA);
+    const currencyB = await loadCurrency(assetB);
+
+    const formattedAmountA = formatAmount(amountA, currencyA);
+    const formattedAmountB = formatAmount(amountB, currencyB);
+
+    const valueA = await usdValue({currencyId: assetA, amount: amountA});
+    const valueB = await usdValue({currencyId: assetB, amount: amountB});
+
+    const totalValue = (valueA || 0) + (valueB || 0);
+
+    let message = `💦 liquidity added as **${formattedAmountA}** + **${formattedAmountB}** by ${formatAccount(who, isWhale(totalValue))}`;
+    if (![assetA, assetB].map(id => id.toString()).includes(usdCurrencyId)) {
+        message += formatUsdValue(totalValue);
+    }
+
     addBotOutput(message);
 }
 
@@ -74,7 +107,7 @@ async function liquidityRemovedHandler({event, siblings}) {
         lrna = ' + ' + formatAmount(asset);
         asset = transfers[1].data;
     }
-    const value = currencyId.toString() !== usdCurrencyId ? usdValue(asset) : null;
+    const value = currencyId.toString() !== usdCurrencyId ? await usdValue(asset) : null;
     const message = `🚰 omnipool dehydrated of **${formatAmount(asset)}**${formatUsdValue(value)}${lrna} by ${formatAccount(who, isWhale(value))}`;
     addBotOutput(message);
 }

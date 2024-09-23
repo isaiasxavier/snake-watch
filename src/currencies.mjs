@@ -49,6 +49,7 @@ async function loadCurrency(id) {
     return currencies[id];
 }
 
+// currencies.mjs
 export const recordPrice = (sold, bought) => {
     const pair = [sold, bought];
     const [a, b] = pair.map(({currencyId}) => currencyId.toNumber());
@@ -56,23 +57,32 @@ export const recordPrice = (sold, bought) => {
         prices[a] = {};
     }
     prices[a][b] = pair[0].amount / pair[1].amount;
+    console.log(`Recorded price: ${prices[a][b]} for pair: ${a} ${b}`); // Log the recorded price
+    console.log('Current prices object:', JSON.stringify(prices, null, 2)); // Log the current state of the prices object
 }
 
 export function usdValue({currencyId, amount}) {
     const price = getPrice(currencyId, usdCurrencyId);
+    console.log(`Price for currencyId ${currencyId} is: ${price}`); // Log the price found
     return price ? amount / price : null;
 }
 
+// currencies.mjs
 export function getPrice(asset, target) {
     if (prices[asset] && prices[asset][target]) {
         return prices[asset][target];
     }
     try {
+        console.log(`Attempting to find path from ${asset} to ${target}`); // Log the attempt to find a path
         const path = dijkstrajs.find_path(prices, asset, target);
+        console.log('Path found:', path); // Log the path found
         const swaps = path.map((from, i) => [from, path[i + 1]]).filter(([, to]) => to);
         const price = swaps.reduce((acc, [from, to]) => acc * prices[from][to], 1);
+        console.log('Calculated price:', price); // Log the calculated price
         return price;
     } catch (e) {
+        console.error(`Error finding path or calculating price from ${asset} to ${target}:`, e); // Log any errors
+        console.log('Current prices object:', JSON.stringify(prices, null, 2)); // Log the current state of the prices object
         return null;
     }
 }
@@ -142,10 +152,10 @@ export const formatUsdValue = value => {
     let amount = Number(value) / 10 ** (currencies[usdCurrencyId].decimals || 12);
     amount = amount > 1 ? Math.round(amount) : amount;
     const symbol = currencies[usdCurrencyId].symbol || currencies[usdCurrencyId].name || 'USD';
-    return ` *~ ${new Intl.NumberFormat('en-US', {
+    return ` ~ ${new Intl.NumberFormat('en-US', {
         maximumSignificantDigits: amount < 1 ? 1 : 4,
         maximumFractionDigits: 2
-    }).format(amount).replace(/,/g, " ")} ${symbol}*`;
+    }).format(amount).replace(/,/g, " ")} ${symbol}`;
 };
 
 export {loadCurrency};

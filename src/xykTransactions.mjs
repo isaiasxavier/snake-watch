@@ -3,6 +3,8 @@ import {api} from './api.mjs';
 import xykHandler from './handlers/xyk.mjs';
 import {Events} from './events.mjs';
 
+`{`
+
 export async function main() {
     try {
         const apiInstance = api();
