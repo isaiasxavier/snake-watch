@@ -1,6 +1,13 @@
-// xyk.mjs
 import {addBotOutput} from '../bot.mjs';
-import {formatAccount, formatAmount, formatUsdValue, isWhale, recordPrice, usdValue} from "../currencies.mjs";
+import {
+    formatAccount,
+    formatAmount,
+    formatUsdValue,
+    isWhale,
+    loadCurrency,
+    recordPrice,
+    usdValue
+} from "../currencies.mjs";
 import {usdCurrencyId} from "../config.mjs";
 import {notInRouter} from "./router.mjs";
 
@@ -25,9 +32,13 @@ async function buyHandler({event}) {
 export async function swapHandler({who, assetIn, assetOut, amountIn, amountOut}, action = `swapped`) {
     const sold = {currencyId: assetIn, amount: amountIn};
     const bought = {currencyId: assetOut, amount: amountOut};
+
+    const currencyIn = await loadCurrency(assetIn);
+    const currencyOut = await loadCurrency(assetOut);
+
     recordPrice(sold, bought);
     const value = usdValue(bought);
-    let message = `${formatAccount(who, isWhale(value))} ${action} **${formatAmount(sold)}** for **${formatAmount(bought)}**`;
+    let message = `${formatAccount(who, isWhale(value))} ${action} **${formatAmount(sold.amount, currencyIn)}** for **${formatAmount(bought.amount, currencyOut)}**`;
     if (![assetIn, assetOut].map(id => id.toString()).includes(usdCurrencyId)) {
         message += formatUsdValue(value);
     }
@@ -45,9 +56,25 @@ async function liquidityAddedHandler({event}) {
 }
 
 async function liquidityRemovedHandler({event, siblings}) {
-    const {who} = event.data;
-    const amounts = siblings.filter(({method, data: {to}}) =>
-        method === 'Transferred' && to.toString() === who.toString()).map(({data}) => data);
-    const message = `🚰 liquidity removed as **${formatAmount(amounts[0])}** + **${formatAmount(amounts[1])}** by ${formatAccount(who)}`;
+    const {who, assetId: currencyId} = event.data;
+
+    if (!siblings) {
+        console.error('siblings is undefined');
+        return;
+    }
+
+    const transfers = siblings
+        .slice(0, siblings.indexOf(event))
+        .reverse()
+        .filter(({method, data: {to}}) => method === 'Transferred' && to.toString() === who.toString());
+
+    let asset = transfers[0].data;
+    let lrna = '';
+    if (asset.currencyId.toNumber() === 1) {
+        lrna = ' + ' + formatAmount(asset);
+        asset = transfers[1].data;
+    }
+    const value = currencyId.toString() !== usdCurrencyId ? usdValue(asset) : null;
+    const message = `🚰 omnipool dehydrated of **${formatAmount(asset)}**${formatUsdValue(value)}${lrna} by ${formatAccount(who, isWhale(value))}`;
     addBotOutput(message);
 }

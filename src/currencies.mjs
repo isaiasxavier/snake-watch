@@ -3,7 +3,8 @@ import dijkstrajs from "dijkstrajs";
 import {usdCurrencyId, whaleAmount} from "./config.mjs";
 import {fromAccount} from "./utils/evm.mjs";
 import {emojify} from "./utils/emojify.mjs";
-import {metadata} from "./utils/assethub.mjs";
+import {metadata as fetchMetadata} from './utils/assethub.mjs';
+
 
 let currencies = {};
 const prices = {};
@@ -20,25 +21,32 @@ export function currenciesHandler(events) {
 async function loadCurrency(id) {
     if (!currencies[id]) {
         let currency = (await api().query.assetRegistry.assets(id)).toHuman();
+
         if (api().query.assetRegistry.assetMetadataMap) {
             const metadata = await api().query.assetRegistry.assetMetadataMap(id);
             currency = {...currency, ...metadata.toHuman()};
         }
+
         if (currency.assetType === 'Bond') {
             const bond = await api().query.bonds.bonds(id);
             const [parent, maturity] = bond.toHuman();
             currency = {...currency, parent, maturity};
         }
+
         if (currency.assetType === 'External') {
             const location = (await api().query.assetRegistry.assetLocations(id)).toJSON();
             const ahId = location?.interior?.x3[2]?.generalIndex;
             if (ahId) {
-                const meta = await metadata(ahId);
-                currency = {...currency, ...meta?.toHuman()};
+                const meta = await fetchMetadata(ahId);
+                if (meta) {
+                    currency = {...currency, ...meta.toHuman()};
+                }
             }
         }
+
         currencies = {...currencies, [id]: currency};
     }
+    return currencies[id];
 }
 
 export const recordPrice = (sold, bought) => {
@@ -71,20 +79,41 @@ export function getPrice(asset, target) {
 
 export const hdx = amount => ({currencyId: 0, amount});
 
-export const symbol = currencyId => {
-    const currency = currencies[currencyId];
-    if (currency.assetType === 'Bond') {
-        return Number(currencyId) === 1000010 ? 'HDXb₁' :
-            Number(currencyId) === 1000013 ? 'HDXb₂' :
-                symbol(currency.parent) + 'b';
+export function symbol(currency) {
+    // Verificação de existência da propriedade assetType
+    if (!currency || typeof currency.assetType === 'undefined') {
+        console.error("Currency ou assetType está indefinido:", currency);
+        return "N/A";  // Retorna um valor padrão ou lança um erro
     }
-    return currency.symbol || currency.name || (Number(currencyId) === 0 ? 'HDX' : currencyId);
+
+    switch (currency.assetType) {
+        case 'HDX':
+            return 'HDX';
+        case 'DAI':
+            return 'DAI';
+        // Adicione mais casos aqui conforme necessário
+        default:
+            return 'Unknown';
+    }
 }
-export const decimals = currencyId => {
-    const currency = currencies[currencyId];
-    if (currency.assetType === 'StableSwap') return 18;
-    if (currency.parent) return decimals(currency.parent);
-    return currency.decimals || 1;
+
+async function decimals(id) {
+    if (!currencies[id]) {
+        let currency = (await api().query.assetRegistry.assets(id)).toHuman();
+        if (api().query.assetRegistry.assetMetadataMap) {
+            const metadata = await api().query.assetRegistry.assetMetadataMap(id);
+            currency = {...currency, ...metadata.toHuman()};
+        }
+        currencies[id] = currency;
+    }
+
+    const currency = currencies[id];
+    if (!currency || !currency.assetType) {
+        console.error(`Currency or assetType not found for id: ${id}`);
+        return null; // or a default value
+    }
+
+    return currency.assetType === 'Token' ? currency.decimals : 12; // Adjust as needed
 }
 
 const short = address => "`" + (fromAccount(address.toString()) || address.toString()).substr(-3) + "`";
@@ -95,8 +124,17 @@ const maybeUrl = address => {
 }
 export const icon = address => currencies[0]?.symbol === 'HDX' ? emojify(address) : `🐍`;
 export const formatAccount = (address, whale) => (whale ? '🐋' : icon(address)) + `${maybeUrl(address)}`;
-export const formatAmount = ({amount, currencyId}) => new Intl.NumberFormat('en-US', {maximumSignificantDigits: 4})
-    .format(Number(amount) / 10 ** decimals(currencyId)).replace(/,/g, " ") + ' ' + symbol(currencyId);
+
+export function formatAmount(amount, currency) {
+    if (!currency) {
+        return 'Invalid currency';
+    }
+
+    const decimals = currency.decimals || 0;
+    const formattedAmount = (amount / Math.pow(10, decimals)).toFixed(decimals);
+    return `${formattedAmount} ${currency.symbol || 'Unknown'}`;
+}
+
 export const formatUsdValue = value => {
     if (!value) {
         return '';

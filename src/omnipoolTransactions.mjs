@@ -1,6 +1,7 @@
-// omnipoolTransactions.mjs
 import {api} from './api.mjs';
-import {decimals, formatUsdValue, loadCurrency, symbol, usdValue} from './currencies.mjs';
+import {addBotOutput} from './bot.mjs';
+import {Events} from './events.mjs'; // Adicione esta linha
+import omnipoolHandler from './handlers/omnipool.mjs';
 
 export async function main() {
     try {
@@ -17,30 +18,12 @@ export async function main() {
         }
 
         apiInstance.query.system.events(async (events) => {
-            for (const record of events) {
-                const {event, phase} = record;
-                if (event.section === 'omnipool' && event.method === 'SellExecuted') {
-                    const [accountId, assetSold, assetBought, amountSold, amountBought] = event.data;
-
-                    await loadCurrency(assetSold);
-                    await loadCurrency(assetBought);
-
-                    const soldDecimals = decimals(assetSold);
-                    const boughtDecimals = decimals(assetBought);
-
-                    const soldAmountReadable = (Number(amountSold) / 10 ** soldDecimals).toFixed(soldDecimals);
-                    const boughtAmountReadable = (Number(amountBought) / 10 ** boughtDecimals).toFixed(boughtDecimals);
-
-                    const truncatedAccountId = accountId.toString().slice(-5);
-
-                    const usdValueSold = usdValue({currencyId: assetSold, amount: amountSold});
-                    const usdFormattedValue = formatUsdValue(usdValueSold);
-
-                    console.log(`${truncatedAccountId} swapped ${soldAmountReadable} ${symbol(assetSold)} for ${boughtAmountReadable} ${symbol(assetBought)} ${usdFormattedValue}`);
-                }
-            }
+            const eventHandler = new Events();
+            omnipoolHandler(eventHandler);
+            await eventHandler.emit(events);
         });
     } catch (error) {
         console.error('Falha ao inicializar API:', error);
+        addBotOutput(`Falha ao inicializar API: ${error.message}`);
     }
 }
