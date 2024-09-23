@@ -1,24 +1,33 @@
-<!-- templates/bot.html.twig -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Bot Output</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-</head>
-<body>
-<h1>Bot Output</h1>
-<pre id="bot-output"></pre>
+{% extends 'base.html.twig' %}
 
-<script>
-    $(document).ready(function () {
-        $.ajax({
-            url: "{{ path('run_bot') }}",
-            method: 'GET',
-            success: function (data) {
-                $('#bot-output').text(data.join("\n"));
+{% block title %}Bot Output{% endblock %}
+
+{% block body %}
+    <h1>Bot Output</h1>
+    <div id="bot-output"></div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            function fetchBotOutput() {
+                $.ajax({
+                    url: "{{ path('app_bot_output') }}",
+                    method: 'GET',
+                    success: function (data) {
+                        const outputDiv = $('#bot-output');
+                        outputDiv.empty();
+                        data.forEach(item => {
+                            const transactionDiv = $('<div class="transaction"></div>');
+                            const [timestamp, ...message] = item.split(' ');
+                            transactionDiv.append(`<div class="timestamp">${timestamp}</div>`);
+                            transactionDiv.append(`<div class="message">${message.join(' ')}</div>`);
+                            outputDiv.append(transactionDiv);
+                        });
+                    }
+                });
             }
+
+            fetchBotOutput();
+            setInterval(fetchBotOutput, 5000);
         });
-    });
-</script>
-</body>
-</html>
+    </script>
+{% endblock %}

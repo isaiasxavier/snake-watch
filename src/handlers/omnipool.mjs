@@ -1,4 +1,5 @@
 import {swapHandler} from "./xyk.mjs";
+import {addBotOutput} from '../bot.mjs';
 import {formatAccount, formatAmount, formatUsdValue, isWhale, usdValue} from "../currencies.mjs";
 //import {broadcast} from "../discord.js";
 import {usdCurrencyId} from "../config.mjs";
@@ -13,14 +14,16 @@ export default function omnipoolHandler(events) {
         .on('omnipool', 'LiquidityRemoved', liquidityRemovedHandler);
 }
 
-export async function sellHandler({event}) {
-    const {who, assetIn, assetOut, amountIn, amountOut} = event.data;
-    return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
+async function sellHandler({event}) {
+    const {who, assetIn, assetOut, amount: amountIn, salePrice: amountOut} = event.data;
+    const message = await swapHandler({who, assetIn, assetOut, amountIn, amountOut});
+    addBotOutput(message); // Adiciona a saída do bot
 }
 
-export async function buyHandler({event}) {
-    const {who, assetIn, assetOut, amountIn, amountOut} = event.data;
-    return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
+async function buyHandler({event}) {
+    const {who, assetIn, assetOut, amount: amountOut, buyPrice: amountIn} = event.data;
+    const message = await swapHandler({who, assetIn, assetOut, amountIn, amountOut});
+    addBotOutput(message); // Adiciona a saída do bot
 }
 
 async function liquidityAddedHandler({event}) {
@@ -47,3 +50,5 @@ async function liquidityRemovedHandler({event, siblings}) {
     const message = `🚰 omnipool dehydrated of **${formatAmount(asset)}**${formatUsdValue(value)}${lrna} by ${formatAccount(who, isWhale(value))}`;
     broadcast(message);
 }
+
+export {sellHandler, buyHandler};

@@ -14,28 +14,33 @@ import {rpc, sha} from "./config.mjs";
 import {currenciesHandler} from "./currencies.mjs";
 import {main as omnipoolTransactionsMain} from './omnipoolTransactions.mjs';
 import {main as xykTransactionsMain} from './xykTransactions.mjs';
-
-// Importando express para a API HTTP
 import express from 'express';
 
 let isApiInitialized = false;
+let botOutput = [];
+
+// Função para adicionar saída ao array
+export function addBotOutput(output) {
+    const timestamp = new Date().toISOString();
+    botOutput.push(`${timestamp} ${output}`);
+}
 
 // Função principal para iniciar o bot
 async function main() {
     if (isApiInitialized) {
-        console.log('API já foi inicializada.');
+        addBotOutput('API já foi inicializada.');
         return;
     }
 
-    console.log('Iniciando API...'); // Log adicional para rastrear execuções
+    addBotOutput('Iniciando API...');
     isApiInitialized = true;
 
-    console.log('🐍⌚');
-    console.log('snakewatch', sha);
+    addBotOutput('🐍⌚');
+    addBotOutput(`snakewatch ${sha}`);
     await initApi(rpc);
     const {rpc: {system}} = api();
     const [chain, version] = await Promise.all([system.chain(), system.version()]);
-    console.log(`connected to ${rpc} (${chain} ${version})`);
+    addBotOutput(`connected to ${rpc} (${chain} ${version})`);
 
     const events = new Events();
     events.addHandler(currenciesHandler);
@@ -50,10 +55,9 @@ async function main() {
     events.addHandler(staking);
     events.addHandler(referrals);
 
-    console.log('watching for new blocks');
+    addBotOutput('watching for new blocks');
     events.startWatching();
 
-    // Inicializa omnipoolTransactions e xykTransactions
     await omnipoolTransactionsMain();
     await xykTransactionsMain();
 }
@@ -68,12 +72,12 @@ main().catch(err => {
 const app = express();
 const port = 3000;
 
-// Endpoint simples para verificar se o bot está rodando
+// Endpoint para retornar a saída do bot
 app.get('/run-bot', (req, res) => {
-    res.send('Bot is running');
+    res.json(botOutput);
 });
 
 // Iniciando o servidor HTTP na porta 3000
 app.listen(port, '0.0.0.0', () => {
-    console.log(`Bot HTTP API listening at http://0.0.0.0:${port}`);
+    addBotOutput(`Bot HTTP API listening at http://0.0.0.0:${port}`);
 });

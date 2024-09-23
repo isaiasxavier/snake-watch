@@ -1,6 +1,6 @@
-// src/handlers/xyk.mjs
 import {decimals, loadCurrency, symbol} from "../currencies.mjs";
 import {notInRouter} from "./router.mjs";
+import {addBotOutput} from '../bot.mjs'; // Importa a função addBotOutput
 
 export default async function xykHandler(events) {
     if (!Array.isArray(events)) {
@@ -27,12 +27,14 @@ export default async function xykHandler(events) {
 
 async function sellHandler({event}) {
     const {who, assetIn, assetOut, amount: amountIn, salePrice: amountOut} = event.data;
-    return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
+    const message = await swapHandler({who, assetIn, assetOut, amountIn, amountOut});
+    addBotOutput(message); // Adiciona a saída do bot
 }
 
 async function buyHandler({event}) {
     const {who, assetIn, assetOut, amount: amountOut, buyPrice: amountIn} = event.data;
-    return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
+    const message = await swapHandler({who, assetIn, assetOut, amountIn, amountOut});
+    addBotOutput(message); // Adiciona a saída do bot
 }
 
 export async function swapHandler({who, assetIn, assetOut, amountIn, amountOut}, action = `swapped`) {
@@ -49,4 +51,5 @@ export async function swapHandler({who, assetIn, assetOut, amountIn, amountOut},
 
     const message = `${truncatedAccountId} ${action} ${soldAmountReadable} ${symbol(assetIn)} for ${boughtAmountReadable} ${symbol(assetOut)}`;
     console.log(message);
+    return message; // Retorna a mensagem para ser usada pelo addBotOutput
 }
