@@ -1,55 +1,53 @@
-import {decimals, loadCurrency, symbol} from "../currencies.mjs";
+// xyk.mjs
+import {addBotOutput} from '../bot.mjs';
+import {formatAccount, formatAmount, formatUsdValue, isWhale, recordPrice, usdValue} from "../currencies.mjs";
+import {usdCurrencyId} from "../config.mjs";
 import {notInRouter} from "./router.mjs";
-import {addBotOutput} from '../bot.mjs'; // Importa a função addBotOutput
 
-export default async function xykHandler(events) {
-    if (!Array.isArray(events)) {
-        console.error("TypeError: events is not iterable");
-        return;
-    }
-
-    for (const record of events) {
-        const {event, phase} = record;
-        const siblings = events.filter(({phase: siblingPhase}) =>
-            (phase.isApplyExtrinsic && siblingPhase.isApplyExtrinsic && phase.asApplyExtrinsic.eq(siblingPhase.asApplyExtrinsic)) ||
-            (phase.isFinalization && siblingPhase.isFinalization)
-        );
-
-        if (event.section === 'xyk') {
-            if (event.method === 'SellExecuted' && notInRouter({event, siblings})) {
-                await sellHandler({event});
-            } else if (event.method === 'BuyExecuted' && notInRouter({event, siblings})) {
-                await buyHandler({event});
-            }
-        }
-    }
+export default function xykHandler(events) {
+    events
+        .onFilter('xyk', 'SellExecuted', notInRouter, sellHandler)
+        .onFilter('xyk', 'BuyExecuted', notInRouter, buyHandler)
+        .on('xyk', 'LiquidityAdded', liquidityAddedHandler)
+        .on('xyk', 'LiquidityRemoved', liquidityRemovedHandler);
 }
 
 async function sellHandler({event}) {
     const {who, assetIn, assetOut, amount: amountIn, salePrice: amountOut} = event.data;
-    const message = await swapHandler({who, assetIn, assetOut, amountIn, amountOut});
-    addBotOutput(message); // Adiciona a saída do bot
+    return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
 }
 
 async function buyHandler({event}) {
     const {who, assetIn, assetOut, amount: amountOut, buyPrice: amountIn} = event.data;
-    const message = await swapHandler({who, assetIn, assetOut, amountIn, amountOut});
-    addBotOutput(message); // Adiciona a saída do bot
+    return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
 }
 
 export async function swapHandler({who, assetIn, assetOut, amountIn, amountOut}, action = `swapped`) {
-    await loadCurrency(assetIn);
-    await loadCurrency(assetOut);
+    const sold = {currencyId: assetIn, amount: amountIn};
+    const bought = {currencyId: assetOut, amount: amountOut};
+    recordPrice(sold, bought);
+    const value = usdValue(bought);
+    let message = `${formatAccount(who, isWhale(value))} ${action} **${formatAmount(sold)}** for **${formatAmount(bought)}**`;
+    if (![assetIn, assetOut].map(id => id.toString()).includes(usdCurrencyId)) {
+        message += formatUsdValue(value);
+    }
+    addBotOutput(message);
+}
 
-    const soldDecimals = decimals(assetIn);
-    const boughtDecimals = decimals(assetOut);
+async function liquidityAddedHandler({event}) {
+    const {who, assetA, assetB, amountA, amountB} = event.data;
+    const a = {amount: amountA, currencyId: assetA};
+    const b = {amount: amountB, currencyId: assetB};
+    const [va, vb] = [a, b].map(usdValue);
+    const value = va && vb ? va + vb : null;
+    const message = `💦 liquidity added as **${formatAmount(a)}** + **${formatAmount(b)}**${formatUsdValue(value)} by ${formatAccount(who, isWhale(value))}`;
+    addBotOutput(message);
+}
 
-    const soldAmountReadable = (Number(amountIn) / 10 ** soldDecimals).toFixed(soldDecimals);
-    const boughtAmountReadable = (Number(amountOut) / 10 ** boughtDecimals).toFixed(boughtDecimals);
-
-    const truncatedAccountId = who.toString().slice(-5);
-
-    const message = `${truncatedAccountId} ${action} ${soldAmountReadable} ${symbol(assetIn)} for ${boughtAmountReadable} ${symbol(assetOut)}`;
-    console.log(message);
-    return message; // Retorna a mensagem para ser usada pelo addBotOutput
+async function liquidityRemovedHandler({event, siblings}) {
+    const {who} = event.data;
+    const amounts = siblings.filter(({method, data: {to}}) =>
+        method === 'Transferred' && to.toString() === who.toString()).map(({data}) => data);
+    const message = `🚰 liquidity removed as **${formatAmount(amounts[0])}** + **${formatAmount(amounts[1])}** by ${formatAccount(who)}`;
+    addBotOutput(message);
 }

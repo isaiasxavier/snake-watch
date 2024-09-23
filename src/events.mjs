@@ -1,3 +1,4 @@
+// events.mjs
 import {api} from './api.mjs';
 
 export class Events {
@@ -23,20 +24,11 @@ export class Events {
     }
 
     startWatching() {
-        const apiInstance = api();
-        if (apiInstance && apiInstance.rpc && apiInstance.rpc.chain && apiInstance.rpc.chain.getHeader) {
-            apiInstance.rpc.chain.getHeader().then(header => {
-                const block = header.number.toNumber();
-                console.log(`Latest block number: ${block}`);
-                this.emitFromBlock(block);
-            }).catch(error => {
-                console.error('Error fetching block header:', error);
-            });
-        } else {
-            console.error("API or api().rpc.chain.getHeader is not available");
-        }
+        this.killWatcher = api().query.system.number(head => {
+            const block = head.toNumber() - 1;
+            this.emitFromBlock(block);
+        });
     }
-
 
     stopWatching() {
         if (this.killWatcher) {
@@ -48,7 +40,7 @@ export class Events {
         const listeners = this.listeners;
         const callbacks = events.flatMap(e => listeners
             .filter(({method, section, filterPredicate}) =>
-                (method ? e.event.method === method : true)
+                e && e.event && (method ? e.event.method === method : true)
                 && (filterPredicate ? filterPredicate(e) : true)
                 && (section ? e.event.section === section : true))
             .map(({addedCallback}) => [this.useHandledCallback(addedCallback), e])
@@ -93,5 +85,3 @@ export const processEvents = (events, blockNumber) => events.map(event => ({
         .map(({event}) => event),
     ...event
 }));
-export default class eventsModule {
-}

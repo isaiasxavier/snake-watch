@@ -1,6 +1,7 @@
 // xykTransactions.mjs
 import {api} from './api.mjs';
 import xykHandler from './handlers/xyk.mjs';
+import {Events} from './events.mjs';
 
 export async function main() {
     try {
@@ -17,7 +18,9 @@ export async function main() {
         }
 
         apiInstance.query.system.events(async (events) => {
-            await xykHandler(events);
+            const eventHandler = new Events();
+            xykHandler(eventHandler);
+            await eventHandler.emit(events);
         });
     } catch (error) {
         console.error('Falha ao inicializar API:', error);
