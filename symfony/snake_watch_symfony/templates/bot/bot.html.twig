@@ -1,0 +1,24 @@
+<!-- templates/bot.html.twig -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bot Output</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+<h1>Bot Output</h1>
+<pre id="bot-output"></pre>
+
+<script>
+    $(document).ready(function () {
+        $.ajax({
+            url: "{{ path('run_bot') }}",
+            method: 'GET',
+            success: function (data) {
+                $('#bot-output').text(data.join("\n"));
+            }
+        });
+    });
+</script>
+</body>
+</html>
