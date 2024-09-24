@@ -18,6 +18,14 @@ export function currenciesHandler(events) {
         .on('otc', 'Placed', ({event: {data: {assetIn}}}) => assetIn && loadCurrency(assetIn))
 }
 
+export async function usdValue({currencyId, amount}) {
+    const price = getPrice(currencyId, usdCurrencyId);
+    if (price) {
+        return amount * price;
+    }
+    return null;
+}
+
 async function loadCurrency(id) {
     if (!currencies[id]) {
         let currency = (await api().query.assetRegistry.assets(id)).toHuman();
@@ -50,6 +58,7 @@ async function loadCurrency(id) {
 }
 
 // currencies.mjs
+// currencies.mjs
 export const recordPrice = (sold, bought) => {
     const pair = [sold, bought];
     const [a, b] = pair.map(({currencyId}) => currencyId.toNumber());
@@ -61,12 +70,7 @@ export const recordPrice = (sold, bought) => {
     console.log('Current prices object:', JSON.stringify(prices, null, 2)); // Log the current state of the prices object
 }
 
-export function usdValue({currencyId, amount}) {
-    const price = getPrice(currencyId, usdCurrencyId);
-    console.log(`Price for currencyId ${currencyId} is: ${price}`); // Log the price found
-    return price ? amount / price : null;
-}
-
+// currencies.mjs
 // currencies.mjs
 export function getPrice(asset, target) {
     if (prices[asset] && prices[asset][target]) {
@@ -158,4 +162,5 @@ export const formatUsdValue = value => {
     }).format(amount).replace(/,/g, " ")} ${symbol}`;
 };
 
+// currencies.mjs
 export {loadCurrency};

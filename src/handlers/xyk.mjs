@@ -30,7 +30,7 @@ async function buyHandler({event}) {
     return swapHandler({who, assetIn, assetOut, amountIn, amountOut});
 }
 
-// Atualize a função swapHandler para verificar IDs de moeda indefinidos
+// xyk.mjs
 export async function swapHandler({who, assetIn, assetOut, amountIn, amountOut}, action = `swapped`) {
     if (!assetIn || !assetOut) {
         console.error('Invalid asset IDs:', {assetIn, assetOut});
@@ -53,12 +53,24 @@ export async function swapHandler({who, assetIn, assetOut, amountIn, amountOut},
     let value = await usdValue(bought) || (getPrice(assetOut, usdCurrencyId) ? amountOut / getPrice(assetOut, usdCurrencyId) : null);
     let soldValueInUsd = await usdValue(sold);
 
+    console.log('Value in USD:', value); // Log the value in USD
+    console.log('Sold value in USD:', soldValueInUsd); // Log the sold value in USD
+
     const formattedSoldAmount = formatAmount(sold.amount, currencyIn);
     const formattedBoughtAmount = formatAmount(bought.amount, currencyOut);
     const formattedUsdValue = formatUsdValue(value);
     const formattedSoldValueInUsd = formatUsdValue(soldValueInUsd);
 
-    let message = `${formatAccount(who, isWhale(value))} ${action} **${formattedSoldAmount}** for **${formattedBoughtAmount}**`;
+    // Add the description "Stable Coin" for 4-Pool and 2-Pool
+    const soldPoolDescription = (currencyIn.symbol === '4-Pool' || currencyIn.symbol === '2-Pool') ? ' (USDT)' : '';
+    const boughtPoolDescription = (currencyOut.symbol === '4-Pool' || currencyOut.symbol === '2-Pool') ? ' (USDT)' : '';
+    const formattedSoldAmountWithDescription = `${formattedSoldAmount}${soldPoolDescription}`;
+    const formattedBoughtAmountWithDescription = `${formattedBoughtAmount}${boughtPoolDescription}`;
+
+    // Format the USDT value
+    const usdtValue = value ? ` ~ ${Math.round(value)} USDT` : '';
+
+    let message = `${formatAccount(who, isWhale(value))} ${action} **${formattedSoldAmountWithDescription}** for **${formattedBoughtAmountWithDescription}**${usdtValue}`;
     if (![assetIn, assetOut].map(id => id.toString()).includes(usdCurrencyId)) {
         message += ` (~${formattedSoldValueInUsd})`;
     }

@@ -1,4 +1,4 @@
-import {swapHandler} from "./xyk.mjs";
+import {swapHandler} from './xyk.mjs';
 import {BN} from "@polkadot/util";
 import process from 'node:process';
 

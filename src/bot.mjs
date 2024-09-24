@@ -28,19 +28,19 @@ export function addBotOutput(output) {
 // Função principal para iniciar o bot
 async function main() {
     if (isApiInitialized) {
-        addBotOutput('API já foi inicializada.');
+        console.log('API já foi inicializada.');
         return;
     }
 
-    addBotOutput('Iniciando API...');
+    console.log('Iniciando API...');
     isApiInitialized = true;
 
-    addBotOutput('🐍⌚');
-    addBotOutput(`snakewatch ${sha}`);
+    console.log('🐍⌚');
+    console.log(`snakewatch ${sha}`);
     await initApi(rpc);
     const {rpc: {system}} = api();
     const [chain, version] = await Promise.all([system.chain(), system.version()]);
-    addBotOutput(`connected to ${rpc} (${chain} ${version})`);
+    console.log(`connected to ${rpc} (${chain} ${version})`);
 
     const events = new Events();
     events.addHandler(currenciesHandler);
@@ -55,7 +55,7 @@ async function main() {
     events.addHandler(staking);
     events.addHandler(referrals);
 
-    addBotOutput('watching for new blocks');
+    console.log('watching for new blocks');
     events.startWatching();
 
     await omnipoolTransactionsMain();
@@ -79,5 +79,5 @@ app.get('/run-bot', (req, res) => {
 
 // Iniciando o servidor HTTP na porta 3000
 app.listen(port, '0.0.0.0', () => {
-    addBotOutput(`Bot HTTP API listening at http://0.0.0.0:${port}`);
+    console.log(`Bot HTTP API listening at http://0.0.0.0:${port}`);
 });
